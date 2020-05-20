@@ -6,7 +6,7 @@
 ![Alt text](https://img.shields.io/github/last-commit/Jesse989/tanzania?style=plastic)
 ![Alt text](https://img.shields.io/github/stars/Jesse989/tanzania?style=social)
 
-![Alt text](./images/pumping.jpg)
+![Tanzanian Water Well](./images/pumping.jpg)
 
 
 The purpose of this project is to use classification to predict the operating condition of a waterpoint for each record in the dataset. 
