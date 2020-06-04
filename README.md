@@ -8,13 +8,18 @@
 
 ![Tanzanian Water Well](./images/pumping.jpg)
 
+### About
 According to Tanzania’s Ministry of Water, more than 74,000 such pumps can be found throughout the country. While the installation of these pumps is largely funded via contributions from charitable and other non-governmental organizations (NGO’s), their ongoing maintenance is typically the responsibility of the local community within which they reside. Unfortunately, the cost of maintaining the pumps is often beyond the means of the local community, resulting in pumps becoming non-functional. Furthermore, local communities are often unaware of the need to perform the required maintenance due to the apparent lack of any significant problems with a pump up until the point it ultimately fails.
 
+
+### Questions
 Through this analysis we are going to answer some of the questions as below:
 1. Does source of water have an effect on the functionality of the wells?
 2. Does Age effect the condition of the wells?
 3. What is the best mode of payment for maintainence of wells?
 
+
+### Purpose
 The purpose of this project is to use classification to predict the operating condition of a waterpoint for each record in the dataset. 
 
 Using data from Taarifa and the Tanzanian Ministry of Water, we will predict which pumps are functional, which need some repairs, and which don't work at all. 
@@ -23,11 +28,12 @@ Predict one of these three classes based on a number of variables about what kin
 
 A smart understanding of which waterpoints will fail can improve maintenance operations and ensure that clean, potable water is available to communities across Tanzania.
 
+### Presentation
+Online powerpoint style presentation:
 
-[Click here for online non-technical presentation]('todo')
+[Click here for online non-technical presentation]('https://spark.adobe.com/page/F2QB7NfYVq811/')
 
-
-
+### Data
 This dataset is part of an ongoing competition located at ['https://www.drivendata.org'](https://www.drivendata.org/competitions/7/pump-it-up-data-mining-the-water-table/page/23/).
 
 
