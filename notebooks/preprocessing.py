@@ -96,34 +96,32 @@ class GPSHeightImputer(BaseEstimator, TransformerMixin):
         X['gps_height'] = X['gps_height'].fillna(0)
         return X
 
-#Here will be our strategy to handle gps_height:
+# Here will be our strategy to handle gps_height:
 # In fit() just save the input data as a data frame \
 # with gps_height, lat, long, and gps_height > 0
-# In transform(), if gps_height == 0, then 
+# In transform(), if gps_height == 0, then
 # start at 0.1 radius, and check if there are any non-zero gps_instances.
-# If yes, get the average, else, increment search radius 
+# If yes, get the average, else, increment search radius
 # by 0.3 (0.1 increase corresponds to 11km approximately)
 # If nothing is found within an increment of 2, then just ignore.
 
 class LatLongImputer(BaseEstimator, TransformerMixin):
-    def __init__(self, init_radius=0.1,increment_radius=0.3, method='custom'):
+    def __init__(self, method='custom'):
         self.column_names = []
-        self.init_radius = init_radius
-        self.increment_radius = increment_radius
         self.method = method
         self.df = pd.DataFrame()
+        self.long_mean_map = {}
+        self.lat_mean_map = {}
         pass
-    
-    def __get_subset_records(self, latitude, longitude, df, radius):
-        latitude_from = latitude - radius
-        latitude_to = latitude + radius
-        longitude_from = longitude - radius
-        longitude_to = longitude + radius
-        
-        df_temp = df[(df['latitude'] >= latitude_from) & (df['latitude'] <= latitude_to) & \
-                  (df['longitude'] >= longitude_from) & (df['longitude'] <= longitude_to)]
-        return df_temp
-    
+
+    def __generate_mean_maps(self):
+        temp_df = self.df[(self.df['latitude'] != -2e-08) & (self.df['longitude'] != 0)]
+        for geo in ['ward', 'region', 'basin']:
+            self.long_mean_map[geo] = dict(zip(temp_df.groupby(geo)['longitude'].mean(
+            ).keys(), temp_df.groupby(geo)['longitude'].mean().values))
+            self.lat_mean_map[geo] = dict(zip(temp_df.groupby(geo)['latitude'].mean(
+            ).keys(), temp_df.groupby(geo)['latitude'].mean().values))
+
     def fit(self, X, y=None):
         if self.method == 'mean':
             # find mean of all non-zero values
@@ -134,11 +132,11 @@ class LatLongImputer(BaseEstimator, TransformerMixin):
             self.median_lat = np.median(X[X['latitude'] != -2e-08]['latitude'])
             self.median_long = np.median(X[X['longitude'] != 0]['longitude'])
         elif self.method == 'custom':
-            self.df['latitude'] = X[X['latitude'] != -2e-08]['latitude'] 
-            self.df['longitude'] = X[X['longitude'] != 0]['longitude']
+            self.df = X
+            self.__generate_mean_maps()
         self.column_names = ['latitude', 'longitude', 'gps_height']
         return self
-    
+
     def transform(self, X):
         if self.method == 'mean':
             X['latitude'].replace(-2e-08, self.mean_lat, inplace=True)
@@ -147,30 +145,11 @@ class LatLongImputer(BaseEstimator, TransformerMixin):
             X['latitude'].replace(-2e-08, self.median_lat, inplace=True)
             X['longitude'].replace(0, self.median_long, inplace=True)
         elif self.method == 'custom':
-            lat_transformed = []
-            long_transformed = []
-            for latitude, longitude in zip(X['latitude'],X['longitude']):
-                radius = self.init_radius
-                if (latitude == -2e-08) | (longitude == 0):
-                    lat_temp = latitude
-                    long_temp = longitude
-                    while lat_temp == -2e-08 and long_temp == 0 and radius <= 2:
-                        df_temp = self.__get_subset_records(latitude,longitude,self.df,radius)
-                        
-                        lat_temp = np.mean(df_temp[df_temp['latitude']!=-2e-08]['latitude'])                        
-                        long_temp = np.mean(df_temp[df_temp['longitude']!=0]['longitude'])
-
-                        radius = self.increment_radius + radius
-                else:
-                    lat_temp = latitude
-                    long_temp = longitude
-                lat_transformed.append(lat_temp)
-                long_transformed.append(long_temp)
-            X['latitude'] = lat_transformed
-            X['longitude'] = long_transformed
+            X[(X['latitude'] == -2e-08)]['latitude'] = X['latitude'].map(self.lat_mean_map)
+            X[(X['longitude'] == 0)]['longitude'] = X['longitude'].map(self.long_mean_map)
         self.column_names = X.columns
         return X
-
+        
 # will work the same way as the gps imputer. 
 class PopulationImputer(BaseEstimator, TransformerMixin):
     def __init__(self, method='custom'):
@@ -302,7 +281,7 @@ class HighCardTransformer(BaseEstimator, TransformerMixin):
             for col in X.columns:
                 for val in X[col].unique():
                     mean = np.mean(X[X[col] == val][target])
-                    if np.isnan(mean):
+                    if (np.isnan(mean)) or (val in ['0','-']):
                         mean = 0
                     self.mean_map[target][val] = self.mean_map.get(
                         val, mean)
@@ -356,3 +335,48 @@ class ExtractionMerge(BaseEstimator, TransformerMixin):
         X['extraction'] = X['extraction'].apply(self.__merge)
         self.column_names = ['extraction']
         return X[self.column_names]
+
+        
+# will work the same way as the gps imputer. 
+class MeanPumpTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self, init_radius=0.1, increment_radius=0.3): 
+        self.column_names = [] 
+        self.init_radius = init_radius
+        self.increment_radius = increment_radius
+        self.df = pd.DataFrame()
+        
+    def __get_subset_records(self, latitude, longitude, df, radius):
+        latitude_from = latitude - radius
+        latitude_to = latitude + radius
+        longitude_from = longitude - radius
+        longitude_to = longitude + radius
+        
+        df_temp = df[(df['latitude'] >= latitude_from) & (df['latitude'] <= latitude_to) & \
+                  (df['longitude'] >= longitude_from) & (df['longitude'] <= longitude_to)]
+        return df_temp
+        
+    def fit(self, X, y=None):
+        self.df['status_code'] = y.astype('category').cat.codes
+        self.df['latitude'] = X[X['latitude'] != -2e-08]['latitude'] 
+        self.df['longitude'] = X[X['longitude'] != 0]['longitude']
+        self.df.sort_values(['latitude', 'longitude'], inplace=True)
+        self.column_names = ['latitude', 'longitude']
+        return self
+    
+    def transform(self, X):
+        mean_pump_functionality = []
+        for latitude, longitude in zip(X['latitude'],X['longitude']):
+            radius = self.init_radius
+
+            mean_pump_temp = 0
+            while mean_pump_temp == 0 and radius <= 2:
+                df_temp = self.__get_subset_records(latitude,longitude,self.df,radius)
+
+                mean_pump_temp = np.mean(df_temp['status_code'])
+
+                radius = self.increment_radius + radius
+
+            mean_pump_functionality.append(mean_pump_temp)
+        X['mean_pump_functionality'] = mean_pump_functionality
+        self.column_names = X.columns
+        return X[['mean_pump_functionality']]
